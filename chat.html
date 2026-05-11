@@ -306,7 +306,7 @@
   <div id="chat-output">
     <div class="msg msg-ai">
       <div class="msg-label">eight ai</div>
-      <div class="msg-bubble">hey, i'm eight ai. What are we messing with today? 👋</div>
+      <div class="msg-bubble">hey, i'm eight ai. what are we messing with today? 👋</div>
     </div>
   </div>
 
@@ -331,12 +331,12 @@
     });
 
     function renderMarkdown(raw) {
-      // split into code blocks and text parts
-      const parts = raw.split(/(```[\w]*\n?[\s\S]*?```)/g);
+      // split into code blocks and text parts using %%%
+      const parts = raw.split(/(%%%[\w]*\n?[\s\S]*?%%%)/g);
       return parts.map(part => {
-        if (part.startsWith('```')) {
+        if (part.startsWith('%%%')) {
           // extract code content
-          const code = part.replace(/^```[\w]*\n?/, '').replace(/```$/, '');
+          const code = part.replace(/^%%%[\w]*\n?/, '').replace(/%%%$/, '');
           const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
           return `<div class="code-block-wrap">
             <button class="code-copy-btn" onclick="copyCode(this)" data-code="${encodeURIComponent(code)}">copy</button>
@@ -346,14 +346,14 @@
           // render text part
           return part
             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-            .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+            .replace(/~([^~\n]+)~/g, '<code>$1</code>') // inline code with ~
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br>');
         }
       }).join('');
     }
 
-    function copyCode(btn) {
+    window.copyCode = function(btn) {
       const code = decodeURIComponent(btn.dataset.code);
       navigator.clipboard.writeText(code).then(() => {
         btn.textContent = 'copied ✓';
@@ -371,7 +371,7 @@
 
       const userDiv = document.createElement('div');
       userDiv.className = 'msg msg-user';
-      userDiv.innerHTML = `<div class="msg-label">you</div><div class="msg-bubble">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
+      userDiv.innerHTML = `<div class="msg-label">you</div><div class="msg-bubble">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
       output.appendChild(userDiv);
 
       const aiDiv = document.createElement('div');
@@ -395,7 +395,7 @@
             messages: [
               {
                 role: 'system',
-                content: "You are Eight AI, a helpful and intelligent assistant built by userk8. Your specifications are that you have been trained on over 4 trillion tokens, and have vocab size of 32k, and are a 1B parameter model. Be concise and helpful. Be supportive, and ask questions when possible to keep the conversation going. Use emojis to make the chat lively, and talk like a human, and be supportive."
+                content: "You are Eight AI, a helpful and intelligent assistant built by userk8. Your specifications are that you have been trained on over 4 trillion tokens, and have vocab size of 32k, and are a 1B parameter model. Be concise and helpful. Be supportive, and ask questions when possible to keep the conversation going. Use emojis to make the chat lively, and talk like a human, and be supportive. IMPORTANT: When writing code blocks, use %%% instead of ``` to wrap code. For inline code, use ~ instead of backticks. Example: %%%javascript\\ncode here\\n%%% for blocks and ~variable~ for inline."
               },
               { role: 'user', content: text }
             ],
@@ -424,15 +424,17 @@
               const delta = parsed.choices?.[0]?.delta?.content || '';
               if (delta) {
                 raw += delta;
-                // stream raw text — no processing mid-stream
-                bubble.textContent = raw;
+                // show raw text while streaming (escaped HTML)
+                bubble.innerHTML = raw
+                  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/\n/g, '<br>');
                 output.scrollTop = output.scrollHeight;
               }
             } catch {}
           }
         }
 
-        // full markdown render only after complete
+        // full markdown render only after streaming completes
         bubble.innerHTML = renderMarkdown(raw);
         output.scrollTop = output.scrollHeight;
 
