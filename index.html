@@ -82,7 +82,7 @@
 <body>
 
   <div id="chat-output">
-    <div class="msg-ai"><span>eight ai:</span> loading model, please wait...</div>
+    <div class="msg-ai"><span>eight ai:</span> loading...</div>
   </div>
 
   <div id="input-row">
@@ -92,7 +92,6 @@
 
   <div id="status">initializing...</div>
 
-  <!-- brain iframe hidden, handles all model logic -->
   <iframe id="brain" src="brain.html" style="display:none;"></iframe>
 
   <script>
@@ -102,37 +101,34 @@
     const status = document.getElementById('status');
     const brain = document.getElementById('brain');
 
-    // listen for messages from brain.html
+    let streamingDiv = null;
+
     window.addEventListener('message', (e) => {
       if (e.data.type === 'ready') {
-        status.textContent = 'model loaded. ready.';
+        status.textContent = 'ready.';
         input.disabled = false;
         btn.disabled = false;
         output.innerHTML = '<div class="msg-ai"><span>eight ai:</span> ready. ask me anything.</div>';
       }
 
       if (e.data.type === 'chunk') {
-        const thinking = document.getElementById('thinking');
-        if (thinking) {
-          thinking.className = 'msg-ai';
-          thinking.innerHTML = '<span>eight ai:</span> ';
-          thinking.id = 'streaming';
+        // first chunk — create the bubble
+        if (e.data.first) {
+          const thinking = document.getElementById('thinking');
+          if (thinking) thinking.remove();
+          streamingDiv = document.createElement('div');
+          streamingDiv.className = 'msg-ai';
+          streamingDiv.innerHTML = '<span>eight ai:</span> ';
+          output.appendChild(streamingDiv);
         }
-        const streaming = document.getElementById('streaming');
-        if (streaming) streaming.innerHTML += e.data.text;
-        output.scrollTop = output.scrollHeight;
+        if (streamingDiv) {
+          streamingDiv.innerHTML += e.data.text;
+          output.scrollTop = output.scrollHeight;
+        }
       }
 
-      if (e.data.type === 'response') {
-        // remove thinking indicator
-        const thinking = document.getElementById('thinking');
-        if (thinking) thinking.remove();
-
-        const div = document.createElement('div');
-        div.className = 'msg-ai';
-        div.innerHTML = `<span>eight ai:</span> ${e.data.text}`;
-        output.appendChild(div);
-        output.scrollTop = output.scrollHeight;
+      if (e.data.type === 'done') {
+        streamingDiv = null;
         btn.disabled = false;
         input.disabled = false;
         status.textContent = 'ready.';
@@ -151,13 +147,11 @@
       const text = input.value.trim();
       if (!text) return;
 
-      // show user message
       const userDiv = document.createElement('div');
       userDiv.className = 'msg-user';
       userDiv.innerHTML = `<span>you:</span> ${text}`;
       output.appendChild(userDiv);
 
-      // show thinking
       const thinkDiv = document.createElement('div');
       thinkDiv.className = 'msg-ai';
       thinkDiv.id = 'thinking';
@@ -165,7 +159,6 @@
       output.appendChild(thinkDiv);
       output.scrollTop = output.scrollHeight;
 
-      // send to brain
       brain.contentWindow.postMessage({ type: 'generate', prompt: text }, '*');
 
       input.value = '';
