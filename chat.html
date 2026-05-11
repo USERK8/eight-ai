@@ -30,7 +30,6 @@
       overflow: hidden;
     }
 
-    /* NAV */
     nav {
       display: flex;
       justify-content: space-between;
@@ -61,10 +60,7 @@
       to { transform: rotate(360deg); }
     }
 
-    .nav-links {
-      display: flex;
-      gap: 8px;
-    }
+    .nav-links { display: flex; gap: 8px; }
 
     .nav-links a {
       text-decoration: none;
@@ -81,7 +77,6 @@
 
     .nav-links a:hover { color: var(--text); border-color: var(--muted); }
 
-    /* CHAT AREA */
     #chat-output {
       flex: 1;
       overflow-y: auto;
@@ -105,13 +100,8 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .msg-user {
-      align-self: flex-end;
-    }
-
-    .msg-ai {
-      align-self: flex-start;
-    }
+    .msg-user { align-self: flex-end; }
+    .msg-ai { align-self: flex-start; }
 
     .msg-label {
       font-size: 10px;
@@ -144,7 +134,27 @@
       border-bottom-left-radius: 2px;
     }
 
-    /* THINKING */
+    .msg-ai .msg-bubble pre {
+      background: #000;
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 8px 0;
+      font-size: 12px;
+      color: var(--cyan);
+      white-space: pre;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .msg-ai .msg-bubble code {
+      background: #000;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: var(--cyan);
+      font-size: 12px;
+    }
+
     .thinking-dots span {
       animation: dot 1.2s infinite;
       opacity: 0;
@@ -157,7 +167,6 @@
       50% { opacity: 1; }
     }
 
-    /* INPUT */
     #input-area {
       padding: 16px 28px 20px;
       border-top: 1px solid var(--border);
@@ -170,8 +179,10 @@
       gap: 10px;
       max-width: 900px;
       margin: 0 auto;
+      align-items: flex-end;
     }
 
+    /* TEXTAREA instead of input — grows with content */
     #user-input {
       flex: 1;
       padding: 13px 18px;
@@ -182,7 +193,12 @@
       color: var(--text);
       outline: none;
       border-radius: 6px;
-      transition: all 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      resize: none;
+      overflow: hidden;
+      min-height: 46px;
+      max-height: 200px;
+      line-height: 1.6;
     }
 
     #user-input:focus {
@@ -204,6 +220,8 @@
       border-radius: 6px;
       transition: all 0.2s;
       letter-spacing: 0.05em;
+      flex-shrink: 0;
+      height: 46px;
     }
 
     #send-btn:hover {
@@ -257,16 +275,16 @@
   <div id="chat-output">
     <div class="msg msg-ai">
       <div class="msg-label">eight ai</div>
-      <div class="msg-bubble">hey, i'm eight ai. built from scratch by userk8. ask me anything.</div>
+      <div class="msg-bubble">Hey, i'm eight ai. What are we messing with today?</div>
     </div>
   </div>
 
   <div id="input-area">
     <div id="input-row">
-      <input id="user-input" type="text" placeholder="ask something..."/>
+      <textarea id="user-input" placeholder="ask something..." rows="1"></textarea>
       <button id="send-btn">send</button>
     </div>
-    <div id="status">powered by llama 3.3 · groq · eight ai</div>
+    <div id="status">userk8 · eight ai</div>
   </div>
 
   <script>
@@ -276,8 +294,16 @@
     const btn = document.getElementById('send-btn');
     const status = document.getElementById('status');
 
+    // auto-grow textarea
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+    });
+
     function renderMarkdown(raw) {
       return raw
+        .replace(/```[\w]*\n?([\s\S]*?)```/g, '<pre>$1</pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\*\*(.*?)\*\*/gs, '<strong>$1</strong>')
         .replace(/\n/g, '<br>');
     }
@@ -286,13 +312,11 @@
       const text = input.value.trim();
       if (!text) return;
 
-      // user bubble
       const userDiv = document.createElement('div');
       userDiv.className = 'msg msg-user';
       userDiv.innerHTML = `<div class="msg-label">you</div><div class="msg-bubble">${text}</div>`;
       output.appendChild(userDiv);
 
-      // thinking bubble
       const aiDiv = document.createElement('div');
       aiDiv.className = 'msg msg-ai';
       aiDiv.innerHTML = `<div class="msg-label">eight ai</div><div class="msg-bubble"><span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
@@ -300,6 +324,7 @@
       output.scrollTop = output.scrollHeight;
 
       input.value = '';
+      input.style.height = '46px';
       btn.disabled = true;
       input.disabled = true;
       status.textContent = 'generating...';
@@ -313,7 +338,7 @@
             messages: [
               {
                 role: 'system',
-                content: 'You are Eight AI, a helpful and intelligent assistant built by USERK8. Be concise and helpful.'
+                content: 'You are Eight AI, a helpful and intelligent assistant built by userk8. Your specifications are that you have been trained on over 4 trillion tokens, and have vocab size of 32k, and are a 1B parameter model. Be concise and helpful. Be supportive, and ask questions when possible to keep the conversation going. Use emojis to make the chat lively, And talk like a human, and be supportive.'
               },
               { role: 'user', content: text }
             ],
@@ -361,7 +386,10 @@
 
     btn.addEventListener('click', sendMessage);
     input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') sendMessage();
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
     });
   </script>
 </body>
