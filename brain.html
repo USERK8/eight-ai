@@ -5,54 +5,67 @@
   <title>Eight AI Brain</title>
 </head>
 <body>
-  <script type="module">
-    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
+  <script>
+    const WORKER_URL = 'https://notifly.userk8-dev.workers.dev/';
 
-    // point to your HuggingFace repo
-    env.allowRemoteModels = true;
-    const MODEL_ID = 'userk8/eight-ai';
+    window.parent.postMessage({ type: 'ready' }, '*');
 
-    let generator = null;
-
-    async function loadModel() {
-      try {
-        generator = await pipeline('text-generation', MODEL_ID, {
-          dtype: 'q4',         // use your 4bit quantized weights
-          device: 'wasm',       // runs in browser cpu
-        });
-
-        // tell index.html we're ready
-        window.parent.postMessage({ type: 'ready' }, '*');
-      } catch (err) {
-        window.parent.postMessage({ type: 'error', message: err.message }, '*');
-      }
-    }
-
-    // listen for generate requests from index.html
     window.addEventListener('message', async (e) => {
       if (e.data.type !== 'generate') return;
-      if (!generator) return;
 
       try {
-        const result = await generator(e.data.prompt, {
-          max_new_tokens: 200,
-          temperature: 0.7,
-          repetition_penalty: 1.1,
-          do_sample: true,
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are Eight AI, a helpful and intelligent assistant built by USERK8. Be concise and helpful.'
+              },
+              {
+                role: 'user',
+                content: e.data.prompt
+              }
+            ],
+            max_tokens: 500,
+            temperature: 0.7,
+            stream: true
+          })
         });
 
-        // extract only the new generated text, not the prompt
-        const fullText = result[0].generated_text;
-        const responseText = fullText.slice(e.data.prompt.length).trim();
+        // handle streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
 
-        window.parent.postMessage({ type: 'response', text: responseText }, '*');
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+
+          for (const line of lines) {
+            const data = line.replace('data: ', '').trim();
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta?.content || '';
+              fullText += delta;
+              // stream partial response back in realtime
+              window.parent.postMessage({ type: 'chunk', text: delta }, '*');
+            } catch {}
+          }
+        }
+
+        window.parent.postMessage({ type: 'response', text: fullText }, '*');
+
       } catch (err) {
         window.parent.postMessage({ type: 'error', message: err.message }, '*');
       }
     });
-
-    // start loading immediately
-    loadModel();
   </script>
 </body>
 </html>
