@@ -333,8 +333,8 @@
 
   <div id="input-area">
     <div id="model-selector">
-      <button class="model-btn active" data-model="mistral">eight 1.0</button>
-      <button class="model-btn" data-model="cerebras" disabled>eight 2.0 (coming soon)</button>
+      <button class="model-btn active" data-model="eight-1.0" data-label="eight 1.0">eight 1.0</button>
+      <button class="model-btn" data-model="eight-2.0" data-label="eight 2.0" disabled>eight 2.0 (coming soon)</button>
     </div>
     <div id="input-row">
       <textarea id="user-input" placeholder="ask something... (shift+enter for new line)" rows="1"></textarea>
@@ -350,22 +350,18 @@
     const btn = document.getElementById('send-btn');
     const status = document.getElementById('status');
 
-    let selectedModel = 'mistral';
+    let selectedModel = 'eight-1.0';
+    let selectedLabel = 'eight 1.0';
 
-    // Model labels for display purposes
-    const modelNames = {
-      'mistral': 'eight 1.0',
-      'cerebras': 'eight 2.0'
-    };
-
-    // model selector buttons
+    // Model selector logic
     document.querySelectorAll('.model-btn').forEach(b => {
       b.addEventListener('click', () => {
-        if (b.disabled) return; // Prevent click on disabled
+        if (b.disabled) return; 
         document.querySelectorAll('.model-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         selectedModel = b.dataset.model;
-        status.textContent = `userk8 · eight ai · ${modelNames[selectedModel]}`;
+        selectedLabel = b.dataset.label;
+        status.textContent = `userk8 · eight ai · ${selectedLabel}`;
       });
     });
 
@@ -430,7 +426,7 @@
       input.style.height = '46px';
       btn.disabled = true;
       input.disabled = true;
-      status.textContent = `generating via ${modelNames[selectedModel]}...`;
+      status.textContent = `generating via ${selectedLabel}...`;
 
       const bubble = aiDiv.querySelector('.msg-bubble');
 
@@ -458,7 +454,7 @@
 
       btn.disabled = false;
       input.disabled = false;
-      status.textContent = `userk8 · eight ai · ${modelNames[selectedModel]}`;
+      status.textContent = `userk8 · eight ai · ${selectedLabel}`;
       input.focus();
     }
 
