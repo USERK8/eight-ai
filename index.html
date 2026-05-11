@@ -139,7 +139,11 @@
               const parsed = JSON.parse(data);
               const delta = parsed.choices?.[0]?.delta?.content || '';
               if (delta) {
-                aiDiv.innerHTML += delta;
+                aiDiv.dataset.raw = (aiDiv.dataset.raw || '') + delta;
+                aiDiv.innerHTML = '<span>eight ai:</span> ' + aiDiv.dataset.raw
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>');
                 output.scrollTop = output.scrollHeight;
               }
             } catch {}
