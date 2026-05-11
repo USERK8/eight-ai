@@ -35,10 +35,9 @@
           })
         });
 
-        // handle streaming response
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let fullText = '';
+        let firstChunk = true;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -49,18 +48,24 @@
 
           for (const line of lines) {
             const data = line.replace('data: ', '').trim();
-            if (data === '[DONE]') continue;
+            if (data === '[DONE]') {
+              // stream finished
+              window.parent.postMessage({ type: 'done' }, '*');
+              continue;
+            }
             try {
               const parsed = JSON.parse(data);
               const delta = parsed.choices?.[0]?.delta?.content || '';
-              fullText += delta;
-              // stream partial response back in realtime
-              window.parent.postMessage({ type: 'chunk', text: delta }, '*');
+              if (!delta) continue;
+              window.parent.postMessage({ 
+                type: 'chunk', 
+                text: delta,
+                first: firstChunk
+              }, '*');
+              firstChunk = false;
             } catch {}
           }
         }
-
-        window.parent.postMessage({ type: 'response', text: fullText }, '*');
 
       } catch (err) {
         window.parent.postMessage({ type: 'error', message: err.message }, '*');
