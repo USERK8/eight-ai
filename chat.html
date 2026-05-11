@@ -331,22 +331,23 @@
     });
 
     function renderMarkdown(raw) {
-      // split into code blocks and text parts using %%%
-      const parts = raw.split(/(%%%[\w]*\n?[\s\S]*?%%%)/g);
+      // handle both %%% and ``` code blocks as fallback
+      const parts = raw.split(/(```[\w]*\n?[\s\S]*?```|%%%[\w]*\n?[\s\S]*?%%%)/g);
       return parts.map(part => {
-        if (part.startsWith('%%%')) {
+        if (part.startsWith('```') || part.startsWith('%%%')) {
           // extract code content
-          const code = part.replace(/^%%%[\w]*\n?/, '').replace(/%%%$/, '');
+          const code = part.replace(/^(```|%%%)[\w]*\n?/, '').replace(/(```|%%%)$/, '');
           const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
           return `<div class="code-block-wrap">
             <button class="code-copy-btn" onclick="copyCode(this)" data-code="${encodeURIComponent(code)}">copy</button>
             <pre>${escaped}</pre>
           </div>`;
         } else {
-          // render text part
+          // render text part - handle both ~ and ` for inline code
           return part
             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-            .replace(/~([^~\n]+)~/g, '<code>$1</code>') // inline code with ~
+            .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+            .replace(/~([^~\n]+)~/g, '<code>$1</code>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br>');
         }
@@ -395,7 +396,7 @@
             messages: [
               {
                 role: 'system',
-                content: "You are Eight AI, a helpful and intelligent assistant built by userk8. Your specifications are that you have been trained on over 4 trillion tokens, and have vocab size of 32k, and are a 1B parameter model. Be concise and helpful. Be supportive, and ask questions when possible to keep the conversation going. Use emojis to make the chat lively, and talk like a human, and be supportive. IMPORTANT: When writing code blocks, use %%% instead of ``` to wrap code. For inline code, use ~ instead of backticks. Example: %%%javascript\\ncode here\\n%%% for blocks and ~variable~ for inline."
+                content: "You are Eight AI, a helpful and intelligent assistant built by userk8. Your specifications are that you have been trained on over 4 trillion tokens, and have vocab size of 32k, and are a 1B parameter model. Be concise and helpful. Be supportive, and ask questions when possible to keep the conversation going. Use emojis to make the chat lively, and talk like a human, and be supportive."
               },
               { role: 'user', content: text }
             ],
