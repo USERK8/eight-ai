@@ -111,6 +111,18 @@
         output.innerHTML = '<div class="msg-ai"><span>eight ai:</span> ready. ask me anything.</div>';
       }
 
+      if (e.data.type === 'chunk') {
+        const thinking = document.getElementById('thinking');
+        if (thinking) {
+          thinking.className = 'msg-ai';
+          thinking.innerHTML = '<span>eight ai:</span> ';
+          thinking.id = 'streaming';
+        }
+        const streaming = document.getElementById('streaming');
+        if (streaming) streaming.innerHTML += e.data.text;
+        output.scrollTop = output.scrollHeight;
+      }
+
       if (e.data.type === 'response') {
         // remove thinking indicator
         const thinking = document.getElementById('thinking');
