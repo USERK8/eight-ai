@@ -331,27 +331,32 @@
     });
 
     function renderMarkdown(raw) {
-      // handle both %%% and ``` code blocks as fallback
-      const parts = raw.split(/(```[\w]*\n?[\s\S]*?```|%%%[\w]*\n?[\s\S]*?%%%)/g);
-      return parts.map(part => {
-        if (part.startsWith('```') || part.startsWith('%%%')) {
-          // extract code content
-          const code = part.replace(/^(```|%%%)[\w]*\n?/, '').replace(/(```|%%%)$/, '');
-          const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-          return `<div class="code-block-wrap">
-            <button class="code-copy-btn" onclick="copyCode(this)" data-code="${encodeURIComponent(code)}">copy</button>
-            <pre>${escaped}</pre>
-          </div>`;
-        } else {
-          // render text part - handle both ~ and ` for inline code
-          return part
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-            .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-            .replace(/~([^~\n]+)~/g, '<code>$1</code>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br>');
-        }
-      }).join('');
+      // First, escape HTML in the entire text
+      let escaped = raw
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      
+      // Handle code blocks (``` or %%%)
+      escaped = escaped.replace(/(```|%%%)([\w]*)\n?([\s\S]*?)\1/g, (match, fence, lang, code) => {
+        const codeEscaped = code.trim();
+        return `<div class="code-block-wrap">
+          <button class="code-copy-btn" onclick="copyCode(this)" data-code="${encodeURIComponent(codeEscaped)}">copy</button>
+          <pre>${codeEscaped}</pre>
+        </div>`;
+      });
+      
+      // Handle inline code (backticks or tildes)
+      escaped = escaped.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+      escaped = escaped.replace(/~([^~\n]+)~/g, '<code>$1</code>');
+      
+      // Handle bold
+      escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      
+      // Handle line breaks
+      escaped = escaped.replace(/\n/g, '<br>');
+      
+      return escaped;
     }
 
     window.copyCode = function(btn) {
@@ -407,7 +412,7 @@
         });
 
         const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+        const decoder = new TextDecoder('utf-8', { fatal: false });
         const bubble = aiDiv.querySelector('.msg-bubble');
         bubble.innerHTML = '';
         let raw = '';
@@ -416,10 +421,11 @@
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+          const lines = chunk.split('\n').filter(l => l.trim().startsWith('data: '));
           for (const line of lines) {
-            const data = line.replace('data: ', '').trim();
+            const data = line.replace(/^data:\s*/, '').trim();
             if (data === '[DONE]') continue;
+            if (data === '') continue;
             try {
               const parsed = JSON.parse(data);
               const delta = parsed.choices?.[0]?.delta?.content || '';
@@ -431,7 +437,10 @@
                   .replace(/\n/g, '<br>');
                 output.scrollTop = output.scrollHeight;
               }
-            } catch {}
+            } catch (e) {
+              // skip malformed JSON
+              console.warn('Failed to parse:', data);
+            }
           }
         }
 
