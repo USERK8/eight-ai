@@ -108,9 +108,12 @@
       letter-spacing: 0.15em;
       text-transform: uppercase;
       margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .msg-user .msg-label { color: var(--cyan); text-align: right; }
+    .msg-user .msg-label { color: var(--cyan); justify-content: flex-end; }
     .msg-ai .msg-label { color: var(--muted); }
 
     .msg-bubble {
@@ -118,6 +121,7 @@
       border-radius: 8px;
       font-size: 13px;
       line-height: 1.7;
+      position: relative;
     }
 
     .msg-user .msg-bubble {
@@ -140,11 +144,12 @@
       padding: 12px;
       border-radius: 6px;
       overflow-x: auto;
-      margin: 8px 0;
+      margin: 10px 0;
       font-size: 12px;
       color: var(--cyan);
       white-space: pre;
       font-family: 'JetBrains Mono', monospace;
+      position: relative;
     }
 
     .msg-ai .msg-bubble code {
@@ -153,6 +158,35 @@
       border-radius: 3px;
       color: var(--cyan);
       font-size: 12px;
+    }
+
+    /* COPY BUTTON */
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.2s;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .copy-btn:hover {
+      color: var(--cyan);
+      border-color: var(--cyan);
+    }
+
+    .copy-btn.copied {
+      color: #4caf50;
+      border-color: #4caf50;
     }
 
     .thinking-dots span {
@@ -182,7 +216,6 @@
       align-items: flex-end;
     }
 
-    /* TEXTAREA instead of input — grows with content */
     #user-input {
       flex: 1;
       padding: 13px 18px;
@@ -275,16 +308,16 @@
   <div id="chat-output">
     <div class="msg msg-ai">
       <div class="msg-label">eight ai</div>
-      <div class="msg-bubble">Hey, i'm eight ai. What are we messing with today?</div>
+      <div class="msg-bubble">hey, i'm eight ai. built from scratch by userk8. ask me anything. 👋</div>
     </div>
   </div>
 
   <div id="input-area">
     <div id="input-row">
-      <textarea id="user-input" placeholder="ask something..." rows="1"></textarea>
+      <textarea id="user-input" placeholder="ask something... (shift+enter for new line)" rows="1"></textarea>
       <button id="send-btn">send</button>
     </div>
-    <div id="status">userk8 · eight ai</div>
+    <div id="status">powered by llama 3.3 · groq · eight ai</div>
   </div>
 
   <script>
@@ -300,12 +333,38 @@
       input.style.height = Math.min(input.scrollHeight, 200) + 'px';
     });
 
+    // render markdown ONLY on complete response to avoid word eating mid-stream
     function renderMarkdown(raw) {
-      return raw
+      // escape HTML first to prevent injection
+      const escaped = raw
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      return escaped
         .replace(/```[\w]*\n?([\s\S]*?)```/g, '<pre>$1</pre>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\*\*(.*?)\*\*/gs, '<strong>$1</strong>')
+        .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br>');
+    }
+
+    function addCopyBtn(bubble, rawText) {
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.textContent = 'copy';
+      btn.addEventListener('click', () => {
+        navigator.clipboard.writeText(rawText).then(() => {
+          btn.textContent = 'copied ✓';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.textContent = 'copy';
+            btn.classList.remove('copied');
+          }, 2000);
+        });
+      });
+      // add to label, not bubble
+      const label = bubble.parentElement.querySelector('.msg-label');
+      label.appendChild(btn);
     }
 
     async function sendMessage() {
@@ -314,7 +373,7 @@
 
       const userDiv = document.createElement('div');
       userDiv.className = 'msg msg-user';
-      userDiv.innerHTML = `<div class="msg-label">you</div><div class="msg-bubble">${text}</div>`;
+      userDiv.innerHTML = `<div class="msg-label">you</div><div class="msg-bubble">${text.replace(/</g,'&lt;')}</div>`;
       output.appendChild(userDiv);
 
       const aiDiv = document.createElement('div');
@@ -338,7 +397,7 @@
             messages: [
               {
                 role: 'system',
-                content: 'You are Eight AI, a helpful and intelligent assistant built by userk8. Your specifications are that you have been trained on over 4 trillion tokens, and have vocab size of 32k, and are a 1B parameter model. Be concise and helpful. Be supportive, and ask questions when possible to keep the conversation going. Use emojis to make the chat lively, And talk like a human, and be supportive.'
+                content: "You are Eight AI, a helpful and intelligent assistant built by userk8. Your specifications are that you have been trained on over 4 trillion tokens, and have vocab size of 32k, and are a 1B parameter model. Be concise and helpful. Be supportive, and ask questions when possible to keep the conversation going. Use emojis to make the chat lively, and talk like a human, and be supportive."
               },
               { role: 'user', content: text }
             ],
@@ -367,15 +426,21 @@
               const delta = parsed.choices?.[0]?.delta?.content || '';
               if (delta) {
                 raw += delta;
-                bubble.innerHTML = renderMarkdown(raw);
+                // stream as plain text — no markdown mid-stream
+                bubble.textContent = raw;
                 output.scrollTop = output.scrollHeight;
               }
             } catch {}
           }
         }
 
+        // render markdown only AFTER full response received
+        bubble.innerHTML = renderMarkdown(raw);
+        addCopyBtn(bubble, raw);
+        output.scrollTop = output.scrollHeight;
+
       } catch (err) {
-        aiDiv.querySelector('.msg-bubble').innerHTML = `error: ${err.message}`;
+        aiDiv.querySelector('.msg-bubble').textContent = `error: ${err.message}`;
       }
 
       btn.disabled = false;
