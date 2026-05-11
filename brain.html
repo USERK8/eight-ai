@@ -18,7 +18,7 @@
       try {
         generator = await pipeline('text-generation', MODEL_ID, {
           dtype: 'q4',         // use your 4bit quantized weights
-          device: 'cpu',       // runs in browser cpu
+          device: 'wasm',       // runs in browser cpu
         });
 
         // tell index.html we're ready
