@@ -6,7 +6,6 @@
   <title>Eight AI</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
       background: #000;
       display: flex;
@@ -16,7 +15,6 @@
       min-height: 100vh;
       font-family: monospace;
     }
-
     #chat-output {
       width: 600px;
       max-width: 90vw;
@@ -27,22 +25,18 @@
       margin-bottom: 12px;
       font-size: 14px;
       line-height: 1.6;
-      color: #e0e0e0;
       background: #0a0a0a;
     }
-
     .msg-user { color: #fff; margin-bottom: 8px; }
     .msg-user span { font-weight: bold; color: #00e5ff; }
     .msg-ai { color: #ccc; margin-bottom: 8px; }
     .msg-ai span { font-weight: bold; color: #00b8d4; }
-
     #input-row {
       display: flex;
       width: 600px;
       max-width: 90vw;
       gap: 8px;
     }
-
     #user-input {
       flex: 1;
       padding: 10px 14px;
@@ -53,10 +47,8 @@
       color: #fff;
       outline: none;
     }
-
     #user-input:focus { border-color: #00e5ff; }
     #user-input::placeholder { color: #444; }
-
     #send-btn {
       padding: 10px 20px;
       background: #00e5ff;
@@ -67,104 +59,101 @@
       font-weight: bold;
       cursor: pointer;
     }
-
     #send-btn:hover { background: #00b8d4; }
     #send-btn:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; }
-
-    #status {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #444;
-      font-family: monospace;
-    }
+    #status { margin-top: 10px; font-size: 12px; color: #444; }
   </style>
 </head>
 <body>
-
   <div id="chat-output">
-    <div class="msg-ai"><span>eight ai:</span> loading...</div>
+    <div class="msg-ai"><span>eight ai:</span> ready. ask me anything.</div>
   </div>
-
   <div id="input-row">
-    <input id="user-input" type="text" placeholder="type something..." disabled/>
-    <button id="send-btn" disabled>send</button>
+    <input id="user-input" type="text" placeholder="type something..."/>
+    <button id="send-btn">send</button>
   </div>
-
-  <div id="status">initializing...</div>
-
-  <iframe id="brain" src="brain.html" style="display:none;"></iframe>
+  <div id="status">ready.</div>
 
   <script>
+    const WORKER_URL = 'https://notifly.userk8-dev.workers.dev/';
     const output = document.getElementById('chat-output');
     const input = document.getElementById('user-input');
     const btn = document.getElementById('send-btn');
     const status = document.getElementById('status');
-    const brain = document.getElementById('brain');
 
-    let streamingDiv = null;
-
-    window.addEventListener('message', (e) => {
-      if (e.data.type === 'ready') {
-        status.textContent = 'ready.';
-        input.disabled = false;
-        btn.disabled = false;
-        output.innerHTML = '<div class="msg-ai"><span>eight ai:</span> ready. ask me anything.</div>';
-      }
-
-      if (e.data.type === 'chunk') {
-        // first chunk — create the bubble
-        if (e.data.first) {
-          const thinking = document.getElementById('thinking');
-          if (thinking) thinking.remove();
-          streamingDiv = document.createElement('div');
-          streamingDiv.className = 'msg-ai';
-          streamingDiv.innerHTML = '<span>eight ai:</span> ';
-          output.appendChild(streamingDiv);
-        }
-        if (streamingDiv) {
-          streamingDiv.innerHTML += e.data.text;
-          output.scrollTop = output.scrollHeight;
-        }
-      }
-
-      if (e.data.type === 'done') {
-        streamingDiv = null;
-        btn.disabled = false;
-        input.disabled = false;
-        status.textContent = 'ready.';
-      }
-
-      if (e.data.type === 'error') {
-        const thinking = document.getElementById('thinking');
-        if (thinking) thinking.remove();
-        status.textContent = 'error: ' + e.data.message;
-        btn.disabled = false;
-        input.disabled = false;
-      }
-    });
-
-    function sendMessage() {
+    async function sendMessage() {
       const text = input.value.trim();
       if (!text) return;
 
+      // show user message
       const userDiv = document.createElement('div');
       userDiv.className = 'msg-user';
       userDiv.innerHTML = `<span>you:</span> ${text}`;
       output.appendChild(userDiv);
 
-      const thinkDiv = document.createElement('div');
-      thinkDiv.className = 'msg-ai';
-      thinkDiv.id = 'thinking';
-      thinkDiv.innerHTML = `<span>eight ai:</span> thinking...`;
-      output.appendChild(thinkDiv);
+      // create ai bubble
+      const aiDiv = document.createElement('div');
+      aiDiv.className = 'msg-ai';
+      aiDiv.innerHTML = `<span>eight ai:</span> `;
+      output.appendChild(aiDiv);
       output.scrollTop = output.scrollHeight;
-
-      brain.contentWindow.postMessage({ type: 'generate', prompt: text }, '*');
 
       input.value = '';
       btn.disabled = true;
       input.disabled = true;
       status.textContent = 'generating...';
+
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are Eight AI, a helpful and intelligent assistant built by USERK8. Be concise and helpful.'
+              },
+              { role: 'user', content: text }
+            ],
+            max_tokens: 500,
+            temperature: 0.7,
+            stream: true
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+
+          for (const line of lines) {
+            const data = line.replace('data: ', '').trim();
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta?.content || '';
+              if (delta) {
+                aiDiv.innerHTML += delta;
+                output.scrollTop = output.scrollHeight;
+              }
+            } catch {}
+          }
+        }
+
+      } catch (err) {
+        aiDiv.innerHTML += `error: ${err.message}`;
+      }
+
+      btn.disabled = false;
+      input.disabled = false;
+      status.textContent = 'ready.';
+      input.focus();
     }
 
     btn.addEventListener('click', sendMessage);
