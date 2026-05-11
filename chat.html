@@ -213,12 +213,18 @@
       text-transform: lowercase;
     }
 
-    .model-btn:hover { color: var(--text); border-color: var(--muted); }
+    .model-btn:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
 
     .model-btn.active {
       color: var(--cyan);
       border-color: var(--cyan);
       background: var(--cyan-ghost);
+    }
+
+    .model-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      border-style: dashed;
     }
 
     #input-row {
@@ -327,14 +333,14 @@
 
   <div id="input-area">
     <div id="model-selector">
-      <button class="model-btn active" data-model="mistral">mistral</button>
-      <button class="model-btn" data-model="cerebras">cerebras</button>
+      <button class="model-btn active" data-model="mistral">eight 1.0</button>
+      <button class="model-btn" data-model="cerebras" disabled>eight 2.0 (coming soon)</button>
     </div>
     <div id="input-row">
       <textarea id="user-input" placeholder="ask something... (shift+enter for new line)" rows="1"></textarea>
       <button id="send-btn">send</button>
     </div>
-    <div id="status">userk8 · eight ai · mistral</div>
+    <div id="status">userk8 · eight ai · eight 1.0</div>
   </div>
 
   <script>
@@ -346,13 +352,20 @@
 
     let selectedModel = 'mistral';
 
+    // Model labels for display purposes
+    const modelNames = {
+      'mistral': 'eight 1.0',
+      'cerebras': 'eight 2.0'
+    };
+
     // model selector buttons
     document.querySelectorAll('.model-btn').forEach(b => {
       b.addEventListener('click', () => {
+        if (b.disabled) return; // Prevent click on disabled
         document.querySelectorAll('.model-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
         selectedModel = b.dataset.model;
-        status.textContent = `userk8 · eight ai · ${selectedModel}`;
+        status.textContent = `userk8 · eight ai · ${modelNames[selectedModel]}`;
       });
     });
 
@@ -417,7 +430,7 @@
       input.style.height = '46px';
       btn.disabled = true;
       input.disabled = true;
-      status.textContent = `generating via ${selectedModel}...`;
+      status.textContent = `generating via ${modelNames[selectedModel]}...`;
 
       const bubble = aiDiv.querySelector('.msg-bubble');
 
@@ -445,7 +458,7 @@
 
       btn.disabled = false;
       input.disabled = false;
-      status.textContent = `userk8 · eight ai · ${selectedModel}`;
+      status.textContent = `userk8 · eight ai · ${modelNames[selectedModel]}`;
       input.focus();
     }
 
