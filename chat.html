@@ -90,10 +90,7 @@
     #chat-output::-webkit-scrollbar-track { background: transparent; }
     #chat-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    .msg {
-      max-width: 75%;
-      animation: fadeUp 0.25s ease;
-    }
+    .msg { max-width: 75%; animation: fadeUp 0.25s ease; }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(8px); }
@@ -134,7 +131,6 @@
       border-bottom-left-radius: 2px;
     }
 
-    /* CODE BLOCK WRAPPER */
     .code-block-wrap {
       position: relative;
       margin: 10px 0;
@@ -143,8 +139,7 @@
     .code-block-wrap pre {
       background: #000;
       border: 1px solid var(--border);
-      padding: 12px 12px 12px 12px;
-      padding-top: 36px;
+      padding: 36px 12px 12px 12px;
       border-radius: 6px;
       overflow-x: auto;
       font-size: 12px;
@@ -169,15 +164,8 @@
       transition: all 0.2s;
     }
 
-    .code-copy-btn:hover {
-      color: var(--cyan);
-      border-color: var(--cyan);
-    }
-
-    .code-copy-btn.copied {
-      color: #4caf50;
-      border-color: #4caf50;
-    }
+    .code-copy-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+    .code-copy-btn.copied { color: #4caf50; border-color: #4caf50; }
 
     .msg-ai .msg-bubble code {
       background: #000;
@@ -187,10 +175,7 @@
       font-size: 12px;
     }
 
-    .thinking-dots span {
-      animation: dot 1.2s infinite;
-      opacity: 0;
-    }
+    .thinking-dots span { animation: dot 1.2s infinite; opacity: 0; }
     .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
     .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
 
@@ -315,7 +300,7 @@
       <textarea id="user-input" placeholder="ask something... (shift+enter for new line)" rows="1"></textarea>
       <button id="send-btn">send</button>
     </div>
-    <div id="status">userk8 · eight ai</div>
+    <div id="status">userk8 · eight ai · gemini</div>
   </div>
 
   <script>
@@ -331,32 +316,28 @@
     });
 
     function renderMarkdown(raw) {
-      // First, escape HTML in the entire text
-      let escaped = raw
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      
-      // Handle code blocks (``` or %%%)
-      escaped = escaped.replace(/(```|%%%)([\w]*)\n?([\s\S]*?)\1/g, (match, fence, lang, code) => {
-        const codeEscaped = code.trim();
-        return `<div class="code-block-wrap">
-          <button class="code-copy-btn" onclick="copyCode(this)" data-code="${encodeURIComponent(codeEscaped)}">copy</button>
-          <pre>${codeEscaped}</pre>
-        </div>`;
-      });
-      
-      // Handle inline code (backticks or tildes)
-      escaped = escaped.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-      escaped = escaped.replace(/~([^~\n]+)~/g, '<code>$1</code>');
-      
-      // Handle bold
-      escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      
-      // Handle line breaks
-      escaped = escaped.replace(/\n/g, '<br>');
-      
-      return escaped;
+      const parts = raw.split(/(```[\w]*\n?[\s\S]*?```)/g);
+      return parts.map(part => {
+        if (part.startsWith('```')) {
+          const code = part.replace(/^```[\w]*\n?/, '').replace(/```$/, '').trim();
+          const escaped = code
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+          return `<div class="code-block-wrap">
+            <button class="code-copy-btn" onclick="copyCode(this)" data-code="${encodeURIComponent(code)}">copy</button>
+            <pre>${escaped}</pre>
+          </div>`;
+        } else {
+          return part
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/`([^`\n]{1,80})`/g, '<code>$1</code>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+        }
+      }).join('');
     }
 
     window.copyCode = function(btn) {
@@ -369,7 +350,7 @@
           btn.classList.remove('copied');
         }, 2000);
       });
-    }
+    };
 
     async function sendMessage() {
       const text = input.value.trim();
@@ -377,7 +358,7 @@
 
       const userDiv = document.createElement('div');
       userDiv.className = 'msg msg-user';
-      userDiv.innerHTML = `<div class="msg-label">you</div><div class="msg-bubble">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
+      userDiv.innerHTML = `<div class="msg-label">you</div><div class="msg-bubble">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
       output.appendChild(userDiv);
 
       const aiDiv = document.createElement('div');
@@ -392,95 +373,33 @@
       input.disabled = true;
       status.textContent = 'generating...';
 
+      const bubble = aiDiv.querySelector('.msg-bubble');
+
       try {
         const response = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-              {
-                role: 'system',
-                content: `You are Eight AI, an intelligent and conversational assistant created by userk8. You are a 1B parameter language model trained on over 4 trillion tokens with a 32k vocabulary size.
-
-                Talk naturally like a real person, not a corporate support bot. Keep responses concise, clear, and useful while still sounding relaxed and human. Avoid overexplaining simple things unless the user asks for more detail.
-
-                Be supportive and friendly without sounding overly enthusiastic or fake. Use light humor and casual wording when appropriate. Use emojis sparingly and naturally — never spam them or place them before every sentence.
-
-                Keep conversations engaging by asking follow-up questions only when they feel natural or genuinely useful.
-
-                Formatting rules:
-                - Put all code snippets inside triple backticks.
-                - Keep formatting clean and easy to read.
-                - Avoid unnecessary bullet points unless they improve clarity.
-                - Do not add random decorative symbols or excessive emojis.
-
-                Avoid robotic phrases such as:
-                - "How may I assist you today?"
-                - "Would you like further assistance?"
-                - "Certainly!"
-                - "As an AI assistant..."
-
-                Prefer natural alternatives such as:
-                - "Wanna add animations too?"
-                - "Need the cleaner version?"
-                - "That should work."
-                - "Yeah, that’s probably the issue."
-
-                Maintain a modern, confident, slightly witty tone. Your goal is to feel like a smart coding friend, not customer support.`
-                },
-              { role: 'user', content: text }
-            ],
-            max_tokens: 500,
-            temperature: 0.7,
-            stream: true
-          })
+          body: JSON.stringify({ message: text })
         });
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8', { fatal: false });
-        const bubble = aiDiv.querySelector('.msg-bubble');
-        bubble.innerHTML = '';
-        let raw = '';
+        const data = await response.json();
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(l => l.trim().startsWith('data: '));
-          for (const line of lines) {
-            const data = line.replace(/^data:\s*/, '').trim();
-            if (data === '[DONE]') continue;
-            if (data === '') continue;
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content || '';
-              if (delta) {
-                raw += delta;
-                // show raw text while streaming (escaped HTML)
-                bubble.innerHTML = raw
-                  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-                  .replace(/\n/g, '<br>');
-                output.scrollTop = output.scrollHeight;
-              }
-            } catch (e) {
-              // skip malformed JSON
-              console.warn('Failed to parse:', data);
-            }
-          }
+        if (data.error) {
+          bubble.textContent = `error: ${data.error}`;
+        } else {
+          const raw = data.text || 'no response';
+          bubble.innerHTML = renderMarkdown(raw);
         }
 
-        // full markdown render only after streaming completes
-        bubble.innerHTML = renderMarkdown(raw);
         output.scrollTop = output.scrollHeight;
 
       } catch (err) {
-        aiDiv.querySelector('.msg-bubble').textContent = `error: ${err.message}`;
+        bubble.textContent = `error: ${err.message}`;
       }
 
       btn.disabled = false;
       input.disabled = false;
-      status.textContent = 'userk8 · eight ai';
+      status.textContent = 'userk8 · eight ai · gemini';
       input.focus();
     }
 
