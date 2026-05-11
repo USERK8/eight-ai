@@ -306,7 +306,7 @@
   <div id="chat-output">
     <div class="msg msg-ai">
       <div class="msg-label">eight ai</div>
-      <div class="msg-bubble">hey, i'm eight ai. What are we messing with today? 👋</div>
+      <div class="msg-bubble">What disaster are we solving today? </div>
     </div>
   </div>
 
@@ -315,7 +315,7 @@
       <textarea id="user-input" placeholder="ask something... (shift+enter for new line)" rows="1"></textarea>
       <button id="send-btn">send</button>
     </div>
-    <div id="status">userk8 · eight ai</div>
+    <div id="status">userk8__ · eight ai</div>
   </div>
 
   <script>
@@ -331,11 +331,9 @@
     });
 
     function renderMarkdown(raw) {
-      // split into code blocks and text parts
       const parts = raw.split(/(```[\w]*\n?[\s\S]*?```)/g);
       return parts.map(part => {
         if (part.startsWith('```')) {
-          // extract code content
           const code = part.replace(/^```[\w]*\n?/, '').replace(/```$/, '');
           const escaped = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
           return `<div class="code-block-wrap">
@@ -343,11 +341,13 @@
             <pre>${escaped}</pre>
           </div>`;
         } else {
-          // render text part
-          return part
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-            .replace(/`([^`\n]+)`/g, '<code>$1</code>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          const escaped = part
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;');
+          const withCode = escaped.replace(/`([^`\n]{1,80})`/g, '<code>$1</code>');
+          return withCode
+            .replace(/\*\*(.{1,200}?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br>');
         }
       }).join('');
@@ -442,7 +442,7 @@
 
       btn.disabled = false;
       input.disabled = false;
-      status.textContent = 'userk8 · eight ai';
+      status.textContent = 'powered by llama 3.3 · groq · eight ai';
       input.focus();
     }
 
