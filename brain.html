@@ -20,7 +20,7 @@
           body: JSON.stringify({
             message: e.data.prompt,
             model: 'eight-2.0',
-            preference: 'avg-guy' // Can be adjusted as needed
+            preference: 'avg-guy'
           })
         });
 
@@ -32,7 +32,6 @@
         }
 
         if (data.text) {
-          // Pass the generated text back to the parent window
           window.parent.postMessage({ 
             type: 'chunk', 
             text: data.text,
@@ -40,7 +39,6 @@
           }, '*');
         }
         
-        // Signal that the generation is complete
         window.parent.postMessage({ type: 'done' }, '*');
 
       } catch (err) {
