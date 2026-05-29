@@ -236,7 +236,6 @@
       align-items: flex-end;
     }
 
-    /* Plus Button & Menu */
     .plus-wrapper {
       position: relative;
       display: flex;
@@ -293,7 +292,6 @@
       opacity: 0.7;
     }
 
-    /* Text Input Area */
     #user-input {
       flex: 1;
       padding: 14px 18px;
@@ -318,7 +316,6 @@
     }
     #user-input::placeholder { color: var(--muted); }
 
-    /* Model Preferences Dropdown */
     #model-pref {
       height: 48px;
       padding: 0 14px;
@@ -338,7 +335,6 @@
     
     #model-pref option { background: var(--bg); color: var(--text); }
 
-    /* Send Button */
     #send-btn {
       padding: 0 24px;
       background: var(--cyan);
@@ -446,7 +442,6 @@
     const status = document.getElementById('status');
     const modelPrefSelect = document.getElementById('model-pref');
     
-    // Plus Menu Logic
     const plusBtn = document.getElementById('plus-btn');
     const plusMenu = document.getElementById('plus-menu');
     
@@ -463,7 +458,6 @@
     let selectedModel = 'eight-1.0';
     let selectedLabel = 'eight 1.0';
 
-    // Model selector logic
     document.querySelectorAll('.model-btn').forEach(b => {
       b.addEventListener('click', () => {
         if (b.disabled) return; 
@@ -473,7 +467,6 @@
         selectedLabel = b.dataset.label;
         status.textContent = `userk8 · eight ai · ${selectedLabel}`;
 
-        // Toggle drop down visibility based on model
         if (selectedModel === 'eight-2.0') {
           modelPrefSelect.classList.remove('hidden');
         } else {
