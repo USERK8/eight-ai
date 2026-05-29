@@ -445,6 +445,10 @@
     const plusBtn = document.getElementById('plus-btn');
     const plusMenu = document.getElementById('plus-menu');
     
+    // Memory Buffer setup
+    let chatHistory = [];
+    const MAX_HISTORY = 10; // Capped at last 10 messages so token count doesn't explode
+
     plusBtn.addEventListener('click', () => {
       plusMenu.classList.toggle('hidden');
     });
@@ -521,6 +525,14 @@
       const text = input.value.trim();
       if (!text) return;
 
+      // Add user message to history
+      chatHistory.push({ role: 'user', content: text });
+      
+      // Trim history if it gets too long
+      if (chatHistory.length > MAX_HISTORY) {
+        chatHistory = chatHistory.slice(-MAX_HISTORY);
+      }
+
       const userDiv = document.createElement('div');
       userDiv.className = 'msg msg-user';
       userDiv.innerHTML = `<div class="msg-label">you</div><div class="msg-bubble">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
@@ -542,7 +554,8 @@
       const bubble = aiDiv.querySelector('.msg-bubble');
 
       try {
-        const payload = { message: text, model: selectedModel };
+        // Send the entire array of history instead of just a string
+        const payload = { messages: chatHistory, model: selectedModel };
         
         if (selectedModel === 'eight-2.0') {
           payload.preference = modelPrefSelect.value;
@@ -558,15 +571,21 @@
 
         if (data.error) {
           bubble.textContent = `error: ${data.error}`;
+          // If it errored, pop the last user message out so it doesn't corrupt context
+          chatHistory.pop();
         } else {
           const raw = data.text || 'no response';
           bubble.innerHTML = renderMarkdown(raw);
+          
+          // Add AI response to history so it remembers what it just said
+          chatHistory.push({ role: 'assistant', content: raw });
         }
 
         output.scrollTop = output.scrollHeight;
 
       } catch (err) {
         bubble.textContent = `error: ${err.message}`;
+        chatHistory.pop();
       }
 
       btn.disabled = false;
