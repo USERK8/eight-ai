@@ -18,54 +18,30 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are Eight AI, a helpful and intelligent assistant built by USERK8. Be concise and helpful.'
-              },
-              {
-                role: 'user',
-                content: e.data.prompt
-              }
-            ],
-            max_tokens: 500,
-            temperature: 0.7,
-            stream: true
+            message: e.data.prompt,
+            model: 'eight-2.0',
+            preference: 'avg-guy' // Can be adjusted as needed
           })
         });
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let firstChunk = true;
+        const data = await response.json();
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
-
-          for (const line of lines) {
-            const data = line.replace('data: ', '').trim();
-            if (data === '[DONE]') {
-              // stream finished
-              window.parent.postMessage({ type: 'done' }, '*');
-              continue;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              const delta = parsed.choices?.[0]?.delta?.content || '';
-              if (!delta) continue;
-              window.parent.postMessage({ 
-                type: 'chunk', 
-                text: delta,
-                first: firstChunk
-              }, '*');
-              firstChunk = false;
-            } catch {}
-          }
+        if (data.error) {
+          window.parent.postMessage({ type: 'error', message: data.error }, '*');
+          return;
         }
+
+        if (data.text) {
+          // Pass the generated text back to the parent window
+          window.parent.postMessage({ 
+            type: 'chunk', 
+            text: data.text,
+            first: true
+          }, '*');
+        }
+        
+        // Signal that the generation is complete
+        window.parent.postMessage({ type: 'done' }, '*');
 
       } catch (err) {
         window.parent.postMessage({ type: 'error', message: err.message }, '*');
