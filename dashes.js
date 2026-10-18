@@ -6,7 +6,8 @@
     influence: 90,
     push: 16,
     ease: 0.05,
-    spinSpeed: 0.8,
+    spinSpeed: 1,
+    settleSpeed: 5,
     colorFrom: [255, 255, 255],
     colorTo: [255, 45, 45],
     heatEase: 0.06,
@@ -66,8 +67,8 @@
       for (let c = 0; c < cols; c++, i++) {
         hx[i] = px[i] = c * s;
         hy[i] = py[i] = r * s;
-        ang[i] = Math.random() * 6.2832;
-        rate[i] = (0.4 + Math.random() * 1.2) * (Math.random() < 0.5 ? -1 : 1) * CONFIG.spinSpeed;
+        ang[i] = 0;
+        rate[i] = (3 + Math.random() * 5) * (Math.random() < 0.5 ? -1 : 1) * CONFIG.spinSpeed;
       }
     }
   }
@@ -99,8 +100,13 @@
       }
       px[i] += (tx - px[i]) * E;
       py[i] += (ty - py[i]) * E;
-      ang[i] += rate[i] * dt;
       heat[i] += (near - heat[i]) * CONFIG.heatEase;
+      ang[i] += rate[i] * dt * heat[i];
+      const settle = Math.max(0, 1 - heat[i] * 6);
+      if (settle > 0) {
+        const flat = Math.round(ang[i] / Math.PI) * Math.PI;
+        ang[i] += (flat - ang[i]) * (1 - Math.exp(-dt * CONFIG.settleSpeed * settle));
+      }
 
       const k = Math.min(1, heat[i] * 1.4);
       const cr = CONFIG.colorFrom[0] + (CONFIG.colorTo[0] - CONFIG.colorFrom[0]) * k;
