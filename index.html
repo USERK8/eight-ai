@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>eight ai | userk8</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,6 +22,7 @@
   </nav>
 
   <section id="hero">
+        <div class="prompt prompt-center"><span class="ps">userk8@eight:~$</span> <span class="cmd"></span><span class="caret">_</span></div>
     <div id="spinning-eight">8</div>
     <div id="typing-container">
       <span id="typing-text"></span><span class="cursor">|</span>
@@ -33,6 +34,7 @@
   <div class="divider"></div>
 
   <section id="specs">
+        <div class="prompt"><span class="ps">userk8@eight:~$</span> <span class="cmd"></span><span class="caret">_</span></div>
     <div class="section-label">model specs</div>
 
     <div class="stats-grid">
@@ -58,6 +60,7 @@
       </div>
     </div>
 
+        <div class="prompt"><span class="ps">userk8@eight:~$</span> <span class="cmd"></span><span class="caret">_</span></div>
     <div class="section-label">abilities</div>
 
     <div class="abilities-grid">
@@ -103,13 +106,30 @@
       </div>
     </div>
 
+        <div class="prompt"><span class="ps">userk8@eight:~$</span> <span class="cmd"></span><span class="caret">_</span></div>
     <div class="android-badge">
       <span class="dot"></span>
       on-device android app — coming soon · optimised for snapdragon 680+
     </div>
+
+    <div class="terminal">
+      <div class="term-bar"><span></span><span></span><span></span><div class="term-title">userk8@eight: ~</div></div>
+      <div class="term-body">
+        <div><span class="ps">$</span>eight --info</div>
+        <div><span class="k">model</span>eight ai · fine-tuned</div>
+        <div><span class="k">params</span>1B</div>
+        <div><span class="k">quant</span>4bit</div>
+        <div><span class="k">vocab</span>32K</div>
+        <div><span class="k">hellaswag</span>63.5</div>
+        <div><span class="k">android</span>coming soon</div>
+        <div><span class="ps">$</span><span class="caret">_</span></div>
+      </div>
+    </div>
   </section>
 
   <div class="divider"></div>
+
+  <div class="prompt prompt-wide"><span class="ps">userk8@eight:~$</span> <span class="cmd"></span><span class="caret">_</span></div>
 
   <footer>
     <div class="footer-logo">
@@ -156,6 +176,49 @@
       setTimeout(type, typingSpeed);
     }
     setTimeout(type, 800);
+
+    const commands = [
+      'sudo make me a sandwich',
+      'git commit -m "it works, don\'t touch it"',
+      'rm -rf bugs/',
+      'ping eight.ai',
+      'chmod +x brain.sh',
+      'npm install motivation',
+      'man sleep',
+      'cd ~/ideas && ls',
+      'pip install patience',
+      'tail -f vibes.log',
+      'kill -9 procrastination',
+      'echo "hello world"',
+      'ssh userk8@eight',
+      'whoami'
+    ];
+    for (let i = commands.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [commands[i], commands[j]] = [commands[j], commands[i]];
+    }
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const promptObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        promptObserver.unobserve(entry.target);
+        const el = entry.target.querySelector('.cmd');
+        const text = entry.target.dataset.cmd;
+        if (reduceMotion) { el.textContent = text; return; }
+        let n = 0;
+        const timer = setInterval(() => {
+          n++;
+          el.textContent = text.slice(0, n);
+          if (n >= text.length) clearInterval(timer);
+        }, 55);
+      });
+    }, { threshold: 0.6 });
+
+    document.querySelectorAll('.prompt').forEach((p, i) => {
+      p.dataset.cmd = commands[i % commands.length];
+      promptObserver.observe(p);
+    });
   </script>
 </body>
 </html>
